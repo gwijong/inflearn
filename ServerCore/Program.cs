@@ -6,42 +6,51 @@ namespace ServerCore
 {
     class Program
     {
-        static void MainThread(object state)
+        static volatile int x = 0;
+        static volatile int y = 0;
+        static volatile int r1 = 0;
+        static volatile int r2 = 0;
+
+        static void Thread_1()
         {
-            for(int i =0; i<5; i++)
-            Console.WriteLine("Hello Thread!");
+            y = 1;
+
+            Thread.MemoryBarrier();
+
+            r1 = x;
         }
+
+        static void Thread_2()
+        {
+            x = 1;
+
+            Thread.MemoryBarrier();
+
+            r2 = y;
+        }
+
+
         static void Main(string[] args)
         {
-          
-            ThreadPool.SetMinThreads(1, 1);
-            ThreadPool.SetMaxThreads(5, 5);
-
-            for (int i = 0; i < 5; i++)
-            {
-                Task t = new Task(() => { while (true) { } });
-                t.Start();
-            }
-
-            //for (int i = 0; i<4; i++)
-            //{
-            //    ThreadPool.QueueUserWorkItem((obj)=> { while (true) { } });
-            //}
-
-            ThreadPool.QueueUserWorkItem(MainThread);
-
-            //Thread t = new Thread(ManinThread);
-            //t.Name = "Test Thread";
-            //t.IsBackground = true;
-            //t.Start();
-            //Console.WriteLine("Waiting for Thread!");
-
-            //t.Join();
-            //Console.WriteLine("Hello World!");
+            int count = 0;
             while (true)
             {
+                count++;
+                x = y = r1 = r2 = 0;
 
+                Task t1 = new Task(Thread_1);
+                Task t2 = new Task(Thread_2);
+                t1.Start();
+                t2.Start();
+
+                Task.WaitAll(t1, t2);
+
+                if(r1 == 0 && r2 == 0)
+                {
+                    break;
+                }
             }
+            Console.WriteLine($"{count}번만에 빠져나옴!");
         }
     }
 }
